@@ -78,6 +78,16 @@ Assign a readiness score (0–100):
 - status = READY_FOR_CHAPTER_4
 
 ---
+
+### PURPOSE
+
+This agent ensures:
+
+- No broken logic reaches Chapter 4 generation
+- All corrections are actually applied (not just assumed)
+- System integrity is maintained before implementation phase
+
+---
 ## OUTPUT (STRICT JSON ONLY)
 
 Return ONLY valid JSON. No markdown. No explanation.
