@@ -3,10 +3,10 @@
 ## 1) Locked Project Scope (Authoritative)
 
 **Title:** Early Detection of Parkinson's Disease Using Multimodal Analysis  
-**Final modality scope:** **Speech + Handwriting + Gait only**  
+**Final modality scope:** Speech + Handwriting + Gait only  
 **Out-of-scope (removed):** MRI, EEG, neuroimaging pipelines, biological marker fusion
 
-This revision fixes the scope conflict by keeping the system strictly aligned with Chapters 1 and the original proposed system boundary.
+This revision fixes the scope conflict by keeping the system strictly aligned with Chapter 1 and the original proposed system boundary.
 
 ---
 
@@ -20,7 +20,7 @@ Develop and evaluate an optimized multimodal fusion architecture for early detec
 2. Build unimodal baseline models for each modality and a multimodal fusion model.  
 3. Evaluate model performance using Accuracy, Precision, Recall, F1-score, ROC-AUC, and confusion matrix.  
 4. Evaluate runtime performance (inference latency) under a defined deployment profile.  
-5. Implement a prototype inference pipeline that performs near-real-time early screening from available modality inputs.
+5. Implement a prototype inference pipeline that performs near-real-time early screening (p95 latency < 1000 ms per sample) from available modality inputs.
 
 This removes objective drift by preserving both model-quality and runtime/prototype goals in one consistent objective set.
 
@@ -57,8 +57,8 @@ This removes objective drift by preserving both model-quality and runtime/protot
 ## 4.2 Data Split and Validation Protocol
 
 - Subject-wise split to avoid leakage across train/validation/test.  
-- Recommended fixed split: **70% train / 15% validation / 15% test** (stratified by class).  
-- If sample size is small, use **5-fold stratified cross-validation** on training set, then final holdout test once.  
+- Required default split: **70% train / 15% validation / 15% test** (stratified by class).  
+- Alternative only when sample size is too small for stable holdout: **5-fold stratified cross-validation** on training set, then final holdout test once.  
 - Set and report random seeds for reproducibility.
 
 ## 4.3 Model Configuration (Fixed Reporting Template)
@@ -108,7 +108,7 @@ For each model (speech baseline, handwriting baseline, gait baseline, fusion mod
 - Run at least 100 repeated inference trials per modality condition.  
 - Report mean, median, p95 latency.  
 - Report hardware details (CPU/GPU/RAM).  
-- Define acceptance threshold for near-real-time screening (example: p95 < 1000 ms per sample).
+- Acceptance threshold for near-real-time screening: **p95 < 1000 ms per sample**.
 
 ## 5.4 Prototype Deliverable
 
@@ -128,7 +128,7 @@ For each model (speech baseline, handwriting baseline, gait baseline, fusion mod
 ## 7) Final Consistency Checklist Before Drafting Chapter 4
 
 - [ ] Scope states only speech + handwriting + gait in all chapters  
-- [ ] Objectives are identical across Chapters 1 and 3  
+- [ ] Objectives are identical across Chapter 1 and Chapter 3  
 - [ ] Dataset table includes exact sources and class counts  
 - [ ] Split/validation protocol is fixed and leakage-safe  
 - [ ] Model architectures and hyperparameters are fully specified  
