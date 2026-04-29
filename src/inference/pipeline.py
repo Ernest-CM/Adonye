@@ -149,11 +149,10 @@ class PDInferencePipeline:
         seq = _process_file(gait_file_path, GAIT_TRIM_SECONDS, GAIT_SAMPLING_RATE, GAIT_SEQUENCE_LEN)
         if seq is None:
             raise ValueError(f"Could not extract valid gait features from {gait_file_path}")
-        arr = seq.astype(np.float32)[np.newaxis]
+        arr = seq.astype(np.float32)          # (300, 8)
         if self._gait_scaler is not None:
-            arr_flat = arr.reshape(1, -1)
-            arr = self._gait_scaler.transform(arr_flat).reshape(1, GAIT_SEQUENCE_LEN, GAIT_N_FEATURES)
-        return arr.astype(np.float32)
+            arr = self._gait_scaler.transform(arr)   # (300, 8) → scaler expects 8 features
+        return arr[np.newaxis].astype(np.float32)    # (1, 300, 8)
 
     # ── Unimodal inference ─────────────────────────────────────────────────────
 
