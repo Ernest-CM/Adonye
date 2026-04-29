@@ -25,6 +25,7 @@ from src.config import (
 from src.models.speech_model import get_speech_embedding_model
 from src.models.handwriting_model import get_handwriting_embedding_model
 from src.models.gait_model import get_gait_embedding_model
+from src import safe_load_model
 from src.models.late_fusion import LateFusionPredictor
 from src.models.hybrid_fusion import load_hybrid_fusion_model, predict_hybrid
 
@@ -69,7 +70,7 @@ def run_full_benchmark() -> pd.DataFrame:
     # ── Load models ───────────────────────────────────────────────────────────
     def _load_keras(subdir):
         path = os.path.join(SAVED_MODELS_DIR, subdir, "best_model.keras")
-        return tf.keras.models.load_model(path)
+        return safe_load_model(path)
 
     speech_model = _load_keras("speech_baseline")
     hw_model     = _load_keras("handwriting_baseline")

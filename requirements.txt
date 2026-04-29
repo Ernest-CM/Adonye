@@ -1,7 +1,7 @@
-tensorflow>=2.12.0
+tensorflow>=2.12.0,<2.16.0
 torch>=2.0.0
 torchvision>=0.15.0
-numpy>=1.24.0
+numpy>=1.24.0,<2.0.0
 pandas>=2.0.0
 scikit-learn>=1.3.0
 scipy>=1.11.0
@@ -11,3 +11,4 @@ seaborn>=0.12.0
 tqdm>=4.65.0
 psutil>=5.9.0
 joblib>=1.3.0
+tensorboard>=2.12.0

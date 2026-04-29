@@ -11,7 +11,24 @@ from sklearn.metrics import (
     accuracy_score, precision_score, recall_score, f1_score,
     roc_auc_score, confusion_matrix, roc_curve,
 )
-from typing import Dict
+from typing import Dict, Tuple
+
+
+def find_optimal_threshold(
+    y_true: np.ndarray,
+    y_prob: np.ndarray,
+    low: float = 0.3,
+    high: float = 0.7,
+) -> float:
+    """
+    Return the threshold that maximises Youden's J, clamped to [low, high].
+    Clamping prevents small validation sets from producing extreme thresholds
+    that overfit and fail to generalise.
+    """
+    fpr, tpr, thresholds = roc_curve(y_true.flatten().astype(int), y_prob.flatten())
+    j = tpr - fpr
+    best = float(thresholds[np.argmax(j)])
+    return float(np.clip(best, low, high))
 
 
 def compute_all_metrics(

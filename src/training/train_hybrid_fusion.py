@@ -7,9 +7,12 @@ Usage:
 """
 
 import os
+os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
 import argparse
 import numpy as np
 import tensorflow as tf
+
+from src import safe_load_model
 
 from src.config import (
     RANDOM_SEED, EPOCHS,
@@ -43,9 +46,9 @@ def train(smoke_test: bool = False):
                 "Train all three unimodal baselines first."
             )
 
-    speech_model = tf.keras.models.load_model(speech_path)
-    hw_model     = tf.keras.models.load_model(hw_path)
-    gait_model   = tf.keras.models.load_model(gait_path)
+    speech_model = safe_load_model(speech_path)
+    hw_model     = safe_load_model(hw_path)
+    gait_model   = safe_load_model(gait_path)
 
     speech_emb_model = get_speech_embedding_model(speech_model)
     hw_emb_model     = get_handwriting_embedding_model(hw_model)

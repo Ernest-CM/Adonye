@@ -14,7 +14,6 @@ import os
 import json
 import numpy as np
 import pandas as pd
-from scipy.signal import find_peaks
 from sklearn.preprocessing import StandardScaler
 from sklearn.utils.class_weight import compute_class_weight
 import joblib
@@ -124,62 +123,43 @@ def load_gait_data(
     return X_train, y_train, X_val, y_val, X_test, y_test
 
 
-def extract_stride_features(
+def extract_windowed_features(
     grf_signal: np.ndarray,
-    sampling_rate: int = GAIT_SAMPLING_RATE,
+    seq_len: int = GAIT_SEQUENCE_LEN,
 ) -> np.ndarray:
     """
-    Input:  (T, 16) GRF signal after trimming.
-    Output: (N_strides, 8) matrix.
-    8 features per stride: left/right stride_interval, swing, stance, double_support.
+    Convert (T, 16) trimmed GRF signal to (seq_len, 8) feature matrix.
+
+    Divides the walk into seq_len equal time windows. Per window:
+      [left_mean, left_std, right_mean, right_std,
+       left_max,  right_max, asymmetry, total_force]
+
+    No peak detection — always produces exactly (seq_len, 8).
     """
-    left_force  = grf_signal[:, _LEFT_COLS[0] - 1 : _LEFT_COLS[-1]].sum(axis=1)
-    right_force = grf_signal[:, _RIGHT_COLS[0] - 1 : _RIGHT_COLS[-1]].sum(axis=1)
+    left_force  = grf_signal[:, :8].sum(axis=1).astype(np.float64)
+    right_force = grf_signal[:, 8:].sum(axis=1).astype(np.float64)
 
-    min_dist = int(0.3 * sampling_rate)   # 300 ms minimum between heel strikes
-    left_peaks,  _ = find_peaks(left_force,  distance=min_dist, height=0)
-    right_peaks, _ = find_peaks(right_force, distance=min_dist, height=0)
+    out = np.zeros((seq_len, GAIT_N_FEATURES), dtype=np.float32)
+    segments = np.array_split(np.arange(len(left_force)), seq_len)
 
-    strides = _compute_stride_features(left_peaks, right_peaks, left_force, right_force, sampling_rate)
-    return np.array(strides, dtype=np.float32) if strides else np.empty((0, GAIT_N_FEATURES), dtype=np.float32)
-
-
-def _compute_stride_features(
-    left_peaks, right_peaks, left_force, right_force, sampling_rate
-) -> List[List[float]]:
-    strides = []
-    dt = 1.0 / sampling_rate
-
-    for i in range(len(left_peaks) - 1):
-        lp0, lp1 = left_peaks[i], left_peaks[i + 1]
-        l_stride = (lp1 - lp0) * dt
-
-        # Find the right heel strike within this left stride window
-        rp_in_window = right_peaks[(right_peaks > lp0) & (right_peaks < lp1)]
-        if len(rp_in_window) == 0:
+    for i, idx in enumerate(segments):
+        if len(idx) == 0:
             continue
-        rp = rp_in_window[0]
-
-        r_stride_idx = np.searchsorted(right_peaks, rp)
-        if r_stride_idx + 1 >= len(right_peaks):
-            continue
-        r_stride = (right_peaks[r_stride_idx + 1] - rp) * dt
-
-        # Swing: time foot is off the ground (force below threshold)
-        threshold = 0.05 * left_force.max()
-        l_swing = float(np.sum(left_force[lp0:lp1] < threshold)) * dt
-        r_swing = float(np.sum(right_force[rp:right_peaks[r_stride_idx + 1]] < threshold)) * dt
-
-        l_stance = l_stride - l_swing
-        r_stance = r_stride - r_swing
-
-        # Double support: both feet on ground
-        l_dbl = max(0.0, l_stance + r_stance - l_stride)
-        r_dbl = l_dbl
-
-        strides.append([l_stride, r_stride, l_swing, r_swing, l_stance, r_stance, l_dbl, r_dbl])
-
-    return strides
+        lw = left_force[idx]
+        rw = right_force[idx]
+        l_m = lw.mean()
+        r_m = rw.mean()
+        out[i] = [
+            l_m,
+            lw.std() if len(lw) > 1 else 0.0,
+            r_m,
+            rw.std() if len(rw) > 1 else 0.0,
+            lw.max(),
+            rw.max(),
+            (l_m - r_m) / (l_m + r_m + 1e-8),   # left-right asymmetry
+            l_m + r_m,                             # total vertical force
+        ]
+    return out
 
 
 def _process_file(
@@ -189,7 +169,6 @@ def _process_file(
     seq_len: int,
 ) -> Optional[np.ndarray]:
     try:
-        # PhysioNet files may be tab/space delimited; skip header lines starting with '#'
         with open(fpath, "r") as f:
             lines = [l for l in f if not l.startswith("#") and l.strip()]
 
@@ -199,42 +178,52 @@ def _process_file(
             if len(parts) >= 17:
                 rows.append([float(x) for x in parts[:17]])
 
-        if len(rows) < (2 * trim_seconds * sampling_rate + 100):
+        min_samples = 2 * trim_seconds * sampling_rate + sampling_rate
+        if len(rows) < min_samples:
             return None
 
         signal = np.array(rows)
         trim_n = trim_seconds * sampling_rate
-        signal = signal[trim_n:-trim_n, 1:]   # drop elapsed time column, trim edges
+        signal = signal[trim_n:-trim_n, 1:]   # drop elapsed time, trim edges
 
-        strides = extract_stride_features(signal, sampling_rate)
-        if len(strides) < 10:
+        if len(signal) < seq_len:
             return None
 
-        # Pad or truncate to seq_len
-        if len(strides) >= seq_len:
-            return strides[:seq_len]
-        else:
-            pad = np.zeros((seq_len - len(strides), GAIT_N_FEATURES), dtype=np.float32)
-            return np.vstack([strides, pad])
+        return extract_windowed_features(signal, seq_len)
 
     except Exception:
         return None
 
 
 def _collect_ts_files(raw_dir: str) -> List[Tuple[str, str, int]]:
-    """Return list of (filepath, subject_id, label) for PD and HC subjects only."""
+    """
+    Return list of (filepath, subject_id, label) for PD and HC subjects only.
+
+    PhysioNet Gait-in-PD naming convention:
+      GaPt01_01.txt, JuPt03_06.txt, SiPt02_01.txt  → PD patient  (label=1)
+      GaCo01_01.txt, JuCo01_01.txt, SiCo01_01.txt  → Control     (label=0)
+
+    Pattern: filename contains 'pt' → PD; contains 'co' → Control.
+    Skips metadata files (format.txt, demographics.txt, SHA256SUMS.txt).
+    """
+    SKIP_FILES = {"format.txt", "demographics.txt", "sha256sums.txt"}
     results = []
     for fname in sorted(os.listdir(raw_dir)):
         lower = fname.lower()
+        if lower in SKIP_FILES:
+            continue
         if not (lower.endswith(".ts") or lower.endswith(".txt")):
             continue
-        if lower.startswith("pd"):
+        if "pt" in lower:
             label = 1
-        elif lower.startswith("co"):
+        elif "co" in lower:
             label = 0
         else:
             continue
-        sid = os.path.splitext(fname)[0]
+        # Strip walk-trial suffix (e.g. GaPt01_01 → GaPt01) so all walks from
+        # the same patient share one subject ID and stay in the same split.
+        base = os.path.splitext(fname)[0]
+        sid = base.rsplit("_", 1)[0]
         results.append((os.path.join(raw_dir, fname), sid, label))
     return results
 

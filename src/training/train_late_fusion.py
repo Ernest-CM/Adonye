@@ -20,6 +20,7 @@ from src.config import (
 from src.data.speech_loader import load_speech_data
 from src.data.handwriting_loader import load_handwriting_data
 from src.data.gait_loader import load_gait_data
+from src import safe_load_model
 from src.models.late_fusion import optimise_late_fusion_weights, LateFusionPredictor
 
 
@@ -36,9 +37,9 @@ def train() -> LateFusionPredictor:
         if not os.path.exists(p):
             raise FileNotFoundError(f"Missing trained model: {p}")
 
-    speech_model = tf.keras.models.load_model(speech_path)
-    hw_model     = tf.keras.models.load_model(hw_path)
-    gait_model   = tf.keras.models.load_model(gait_path)
+    speech_model = safe_load_model(speech_path)
+    hw_model     = safe_load_model(hw_path)
+    gait_model   = safe_load_model(gait_path)
 
     _, _, X_s_v, y_s_v, _, _ = load_speech_data(
         SPEECH_RAW_DIR, SPEECH_PROCESSED_DIR, SPEECH_SPLITS_PATH

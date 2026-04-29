@@ -1,8 +1,8 @@
 import tensorflow as tf
-from tensorflow.keras import layers
+from tensorflow.keras import layers, regularizers
 from src.config import (
     GAIT_SEQUENCE_LEN, GAIT_N_FEATURES,
-    GAIT_EMBEDDING_DIM, DROPOUT_RATE_GAIT,
+    GAIT_EMBEDDING_DIM, DROPOUT_RATE_GAIT, L2_LAMBDA,
 )
 
 
@@ -11,27 +11,34 @@ def build_gait_model(
     n_features: int = GAIT_N_FEATURES,
     embedding_dim: int = GAIT_EMBEDDING_DIM,
     dropout_rate: float = DROPOUT_RATE_GAIT,
+    l2_lambda: float = L2_LAMBDA,
 ) -> tf.keras.Model:
     """
-    Spatio-temporal model for stride sequence classification.
+    Lightweight Conv1D model for stride sequence classification.
 
     Architecture:
-        Input(300, 8) → Conv1D(64, k=5) → MaxPool(2)
-                      → Conv1D(128, k=3) → MaxPool(2)
-                      → LSTM(64) → Dropout
-                      → Dense(32) [embedding] → Dense(1, sigmoid)
+        Input(300, 8) → Conv1D(32, k=5) → BN → MaxPool(2)
+                      → Conv1D(64, k=3) → BN → GlobalAvgPool
+                      → Dropout → Dense(32) [embedding] → Dense(1, sigmoid)
 
-    After two MaxPooling1D(2): (300→150→75) timesteps fed to LSTM.
+    GlobalAveragePooling replaces LSTM — more stable on small datasets.
     """
+    reg = regularizers.l2(l2_lambda)
     inputs = tf.keras.Input(shape=(seq_len, n_features), name="gait_input")
 
-    x = layers.Conv1D(64, kernel_size=5, activation="relu", padding="same")(inputs)
+    x = layers.Conv1D(32, kernel_size=5, activation="relu", padding="same",
+                      kernel_regularizer=reg)(inputs)
+    x = layers.BatchNormalization()(x)
     x = layers.MaxPooling1D(pool_size=2)(x)
-    x = layers.Conv1D(128, kernel_size=3, activation="relu", padding="same")(x)
-    x = layers.MaxPooling1D(pool_size=2)(x)
-    x = layers.LSTM(64)(x)
+
+    x = layers.Conv1D(64, kernel_size=3, activation="relu", padding="same",
+                      kernel_regularizer=reg)(x)
+    x = layers.BatchNormalization()(x)
+    x = layers.GlobalAveragePooling1D()(x)
+
     x = layers.Dropout(dropout_rate)(x)
-    embedding = layers.Dense(embedding_dim, activation="relu", name="gait_embedding")(x)
+    embedding = layers.Dense(embedding_dim, activation="relu",
+                             kernel_regularizer=reg, name="gait_embedding")(x)
     output = layers.Dense(1, activation="sigmoid", name="gait_output")(embedding)
 
     model = tf.keras.Model(inputs=inputs, outputs=output, name="gait_model")

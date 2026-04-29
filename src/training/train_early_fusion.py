@@ -21,6 +21,7 @@ from src.config import (
 from src.data.speech_loader import load_speech_data
 from src.data.handwriting_loader import load_handwriting_data
 from src.data.gait_loader import load_gait_data
+from src import safe_load_model
 from src.models.early_fusion import build_early_fusion_model
 
 
@@ -37,9 +38,9 @@ def _load_unimodal_models():
             )
 
     return (
-        tf.keras.models.load_model(speech_path),
-        tf.keras.models.load_model(hw_path),
-        tf.keras.models.load_model(gait_path),
+        safe_load_model(speech_path),
+        safe_load_model(hw_path),
+        safe_load_model(gait_path),
     )
 
 

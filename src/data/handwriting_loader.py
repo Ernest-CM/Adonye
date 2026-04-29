@@ -107,17 +107,24 @@ def _collect_samples(raw_dir: str) -> List[Tuple[str, str, int]]:
     """
     samples = []
 
-    pd_dir = os.path.join(raw_dir, "PD")
-    hc_dir = os.path.join(raw_dir, "HC")
-
-    if os.path.isdir(pd_dir) and os.path.isdir(hc_dir):
-        for lbl, folder in [(1, pd_dir), (0, hc_dir)]:
-            for fname in sorted(os.listdir(folder)):
-                if _is_image(fname):
-                    sid = _extract_subject_id(fname)
-                    fpath = os.path.join(folder, fname)
-                    samples.append((sid, fpath, lbl))
-        return samples
+    # Try known directory-name conventions (checked in priority order)
+    _DIR_PAIRS = [
+        ("SpiralPatients", "SpiralControl"),   # actual HandPD extraction
+        ("PD", "HC"),
+        ("patients", "controls"),
+        ("pd", "hc"),
+    ]
+    for pd_name, hc_name in _DIR_PAIRS:
+        pd_dir = os.path.join(raw_dir, pd_name)
+        hc_dir = os.path.join(raw_dir, hc_name)
+        if os.path.isdir(pd_dir) and os.path.isdir(hc_dir):
+            for lbl, folder in [(1, pd_dir), (0, hc_dir)]:
+                for fname in sorted(os.listdir(folder)):
+                    if _is_image(fname):
+                        sid = _extract_subject_id(fname)
+                        fpath = os.path.join(folder, fname)
+                        samples.append((sid, fpath, lbl))
+            return samples
 
     # Flat directory with prefix naming
     for fname in sorted(os.listdir(raw_dir)):

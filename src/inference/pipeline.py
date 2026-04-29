@@ -35,6 +35,7 @@ from src.config import (
 from src.models.speech_model import get_speech_embedding_model
 from src.models.handwriting_model import get_handwriting_embedding_model
 from src.models.gait_model import get_gait_embedding_model
+from src import safe_load_model
 from src.models.late_fusion import LateFusionPredictor
 from src.models.hybrid_fusion import load_hybrid_fusion_model, predict_hybrid
 
@@ -217,7 +218,7 @@ class PDInferencePipeline:
                     f"Trained model not found at {path}. "
                     "Run the corresponding training script first."
                 )
-            self._loaded[name] = tf.keras.models.load_model(path)
+            self._loaded[name] = safe_load_model(path)
         return self._loaded[name]
 
     def _get_late_predictor(self) -> LateFusionPredictor:
