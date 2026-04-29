@@ -32,12 +32,12 @@ DEMO_HC = [197.076, 206.896, 192.055, 0.00289, 0.00001, 0.00166, 0.00168, 0.0049
            0.422229, 0.741367, -7.3483, 0.177551, 1.743867, 0.085569]
 
 STRATEGIES = {
-    "hybrid":      {"label": "Hybrid Fusion (Best — AUC 0.9814)", "needs": ["speech", "handwriting", "gait"]},
-    "late":        {"label": "Late Fusion (AUC 0.9565)",           "needs": ["speech", "handwriting", "gait"]},
-    "early":       {"label": "Early Fusion (AUC 0.8199)",          "needs": ["speech", "handwriting", "gait"]},
-    "speech":      {"label": "Speech Only (AUC 0.9814)",           "needs": ["speech"]},
-    "handwriting": {"label": "Handwriting Only (AUC 0.9470)",      "needs": ["handwriting"]},
-    "gait":        {"label": "Gait Only (AUC 0.7000)",             "needs": ["gait"]},
+    "hybrid":      {"label": "Hybrid Fusion (Best — AUC 0.9814)", "needs": ["speech", "handwriting", "gait"], "auc": 0.9814},
+    "late":        {"label": "Late Fusion (AUC 0.9565)",           "needs": ["speech", "handwriting", "gait"], "auc": 0.9565},
+    "early":       {"label": "Early Fusion (AUC 0.8199)",          "needs": ["speech", "handwriting", "gait"], "auc": 0.8199},
+    "speech":      {"label": "Speech Only (AUC 0.9814)",           "needs": ["speech"],                        "auc": 0.9814},
+    "handwriting": {"label": "Handwriting Only (AUC 0.9470)",      "needs": ["handwriting"],                   "auc": 0.9470},
+    "gait":        {"label": "Gait Only (AUC 0.7000)",             "needs": ["gait"],                          "auc": 0.7000},
 }
 
 
@@ -200,9 +200,11 @@ if "result" in st.session_state:
     st.progress(prob)
 
     col1, col2, col3, col4 = st.columns(4)
+    latency = r["latency_ms"]
+    latency_note = " (incl. load)" if latency > 2000 else ""
     col1.metric("Probability", f"{prob:.4f}")
     col2.metric("Threshold",   f"{threshold:.2f}")
-    col3.metric("Latency",     f"{r['latency_ms']:.0f} ms")
+    col3.metric("Latency",     f"{latency:.0f} ms{latency_note}")
     col4.metric("Model AUC",   f"{STRATEGIES[strategy_key]['auc']:.4f}")
 
     if st.button("Clear result"):
