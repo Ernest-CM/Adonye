@@ -1,5 +1,12 @@
 # Data and generated outputs (not tracked in git)
-/data/
+/data/*
+!/data/processed/
+!/data/processed/speech/
+!/data/processed/speech/**
+!/data/processed/gait/
+!/data/processed/gait/**
+!/data/splits/
+!/data/splits/**
 /logs/
 /results/
 
