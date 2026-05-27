@@ -1,6 +1,5 @@
-# Data & models (large binaries — not tracked in git)
+# Data and generated outputs (not tracked in git)
 /data/
-/saved_models/
 /logs/
 /results/
 
